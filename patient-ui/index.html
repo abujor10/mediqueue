@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediQueue - রোগী সিরিয়াল বুকিং</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans">
+  <div class="max-w-xl mx-auto p-6">
+    <header class="text-center my-6">
+      <h1 class="text-3xl font-extrabold text-blue-600">MediQueue</h1>
+      <p class="text-slate-500">স্মার্ট হসপিটাল লাইভ সিরিয়াল সিস্টেম</p>
+    </header>
+
+    <!-- লাইভ স্ট্যাটাস কার্ড -->
+    <div class="bg-white border border-blue-100 shadow-lg rounded-2xl p-6 mb-6 text-center">
+      <span class="text-xs uppercase font-bold tracking-wider text-blue-500">চলমান সিরিয়াল</span>
+      <div id="current-serving" class="text-6xl font-black text-slate-800 my-2">--</div>
+      <p class="text-sm text-slate-400">রিয়েল-টাইমে আপডেট হচ্ছে</p>
+    </div>
+
+    <!-- সিরিয়াল বুকিং ফর্ম -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <h2 class="text-lg font-bold mb-4 text-slate-700">নতুন সিরিয়াল নিন</h2>
+      <form id="booking-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">রোগীর পুরো নাম</label>
+          <input type="text" id="patient-name" required placeholder="উদা: মো: করিম" class="w-full border rounded-xl px-4 py-2.5 outline-blue-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">মোবাইল নম্বর</label>
+          <input type="tel" id="patient-phone" required placeholder="01XXXXXXXXX" class="w-full border rounded-xl px-4 py-2.5 outline-blue-500" />
+        </div>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow-md shadow-blue-200">
+          সিরিয়াল নিশ্চিত করুন
+        </button>
+      </form>
+    </div>
+
+    <!-- বুকিং কনফার্মেশন মোডাল/মেসেজ -->
+    <div id="confirmation" class="hidden mt-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-center">
+      <h3 class="font-bold text-lg">সিরিয়াল সফল হয়েছে! 🎉</h3>
+      <p>আপনার সিরিয়াল নম্বর: <span id="assigned-serial" class="font-black text-2xl"></span></p>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api/appointments';
+
+    // লাইভ সিরিয়াল ফেচ করা
+    async function fetchLiveQueue() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        const waiting = data.filter(item => item.status === 'waiting');
+        if (waiting.length > 0) {
+          document.getElementById('current-serving').innerText = waiting[0].serial_number;
+        } else {
+          document.getElementById('current-serving').innerText = '0';
+        }
+      } catch (err) {
+        console.error("ডেটা লোড করতে সমস্যা:", err);
+      }
+    }
+
+    // নতুন সিরিয়াল বুক করা
+    document.getElementById('booking-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const patient_name = document.getElementById('patient-name').value;
+      const phone = document.getElementById('patient-phone').value;
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patient_name, phone })
+        });
+        const result = await res.json();
+
+        if (res.ok) {
+          document.getElementById('confirmation').classList.remove('hidden');
+          document.getElementById('assigned-serial').innerText = result.serial_number;
+          document.getElementById('booking-form').reset();
+          fetchLiveQueue();
+        } else {
+          alert('সমস্যা: ' + result.error);
+        }
+      } catch (err) {
+        alert('সার্ভারে কানেক্ট করা যাচ্ছে না। নিশ্চিত করুন আবু জোরের ব্যাকএন্ড চলছে।');
+      }
+    });
+
+    fetchLiveQueue();
+    setInterval(fetchLiveQueue, 5000); // প্রতি ৫ সেকেন্ডে অটো রিফ্রেশ
+  </script>
+</body>
+</html>
